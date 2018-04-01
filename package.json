@@ -4,7 +4,7 @@
   "description": "jQuery plugin to pan and zoom SVG images either programatically or through mouse/touch events",
   "main": "src/index.js",
   "scripts": {
-    "start": "nodemon --exec npm run build -- ./src/index.js",
+    "start": "nodemon --watch src --exec 'npm run build'",
     "build": "babel src/index.js -o dist/index.js"
   },
   "keywords": [

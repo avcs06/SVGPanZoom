@@ -49,6 +49,8 @@
     const defaultOptions = {
         initialViewBox: null,
         animationTime: 300,
+        limits: null,
+        eventMagnet: null,
         zoom: {
             factor: 0.25,
             minZoom: 1,
@@ -68,9 +70,7 @@
                 dragCursor: "move"
             },
             callback: function (coordinates) { }
-        },
-        limits: null,
-        eventMagnet: null
+        }
     };
 
     const defaultViewBox = {
@@ -266,10 +266,12 @@
             if (!(svg instanceof SVGElement)) {
                 throw new Error('Invalid Parameters. Firt parameter to SVGPanZoom should be an svg element');
             }
+
+            svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
             const self = this;
             this.svg = svg;
 
-            svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
             let viewBox = $.extend({}, svg.viewBox.baseVal);
             if (viewBox.x === 0 && viewBox.y === 0 && viewBox.width === 0 && viewBox.height === 0) {
                 viewBox = defaultViewBox;
@@ -295,145 +297,9 @@
                     this.animationTime = animationTime || 0;
                 },
                 set eventMagnet(eventMagnet) {
+                    self.destroy();
                     this.eventMagnet = $(eventMagnet || svg);
-                },
-                set limits(limits) {
-                    if (limits === null) {
-                        const multiplier = 0.15;
-                        const horizontalSizeIncrement = viewBox.width * 0.15;
-                        const verticalSizeIncrement = viewBox.height * 0.15;
-                        this.limits = {
-                            minX: viewBox.x - horizontalSizeIncrement,
-                            minY: viewBox.y - verticalSizeIncrement,
-                            maxX: viewBox.x + viewBox.width + horizontalSizeIncrement,
-                            maxY: viewBox.y + viewBox.height + verticalSizeIncrement
-                        };
-                    } else {
-                        this.limits = {
-                            minX: limits.min.x,
-                            minY: limits.min.y,
-                            maxX: limits.max.x,
-                            maxY: limits.max.y
-                        };
-                    }
-                    this.validateLimits(viewBox);
-                },
-                set pan(pan) {
-                    if (pan) {
-                        const panMethod = (callback, amount, animationTime) => {
-                            if (amount == null) {
-                                amount = pan.factor
-                                if (!amount) {
-                                    return this;
-                                }
-                            }
-
-                            return callback(amount, animationTime);
-                        };
-
-                        self.panLeft = panMethod.bind(self, (amount, animationTime) => (
-                            self.panRight(-amount, animationTime)
-                        ));
-
-                        self.panRight = panMethod.bind(self, (amount, animationTime) => (
-                            self.setViewBox(viewBox.x + amount, null, null, null, animationTime, () => {
-                                pan.callback({x: viewBox.x, y: viewBox.y});
-                            })
-                        ));
-
-                        self.panUp = panMethod.bind(self, (amount, animationTime) => (
-                            self.panDown(-amount, animationTime)
-                        ));
-
-                        self.panDown = panMethod.bind(self, (amount, animationTime) => (
-                            self.setViewBox(null, viewBox.y + amount, null, null, animationTime, () => {
-                                pan.callback({ x: viewBox.x, y: viewBox.y });
-                            })
-                        ));
-                    } else {
-                        delete self.panLeft;
-                        delete self.panRight;
-                        delete self.panUp;
-                        delete self.panDown;
-                    }
-
-                    this.pan = pan || null;
-                },
-                set zoom(zoom) {
-                    if (zoom) {
-                        const minWidthAfterZoom = this.initialViewBox.width / zoom.maxZoom;
-                        const minHeightAfterZoom = this.initialViewBox.height / zoom.maxZoom;
-                        const maxWidthAfterZoom = this.initialViewBox.width / zoom.minZoom;
-                        const maxHeightAfterZoom = this.initialViewBox.height / zoom.minZoom;
-
-                        const zoomMethod = (callback, focalPoint, amount, animationTime) => {
-                            if (amount == null) {
-                                amount = zoom.factor
-                                if (!amount) {
-                                    return this;
-                                }
-                            }
-
-                            return callback(focalPoint, amount, animationTime);
-                        };
-
-                        self.zoomIn = zoomMethod.bind(self, (focalPoint, amount, animationTime) => (
-                            self.zoomOut(focalPoint, -amount, animationTime)
-                        ));
-
-                        self.zoomOut = zoomMethod.bind(self, (focalPoint, amount, animationTime) => {
-                            let newHeight, newWidth;
-                            if (amount < 0) {
-                                newWidth = viewBox.width / (1 - amount);
-                                newHeight = viewBox.height / (1 - amount);
-                            } else {
-                                newWidth = viewBox.width * (1 + amount);
-                                newHeight = viewBox.height * (1 + amount);
-                            }
-
-                            //Validate zoom limits
-                            if (newWidth < minWidthAfterZoom) {
-                                newHeight *= minWidthAfterZoom / newWidth;
-                                newWidth = minWidthAfterZoom;
-                            } else if (newWidth > maxWidthAfterZoom) {
-                                newHeight *= maxWidthAfterZoom / newWidth;
-                                newWidth = maxWidthAfterZoom;
-                            }
-
-                            if (newHeight < minHeightAfterZoom) {
-                                newWidth *= minHeightAfterZoom / newHeight;
-                                newHeight = minHeightAfterZoom;
-                            } else if (newHeight > maxHeightAfterZoom) {
-                                newWidth *= maxHeightAfterZoom / newHeight;
-                                newHeight = maxHeightAfterZoom;
-                            }
-
-                            // Calculate origin based on the focal point constant
-                            let origin;
-                            if (focalPoint == null) {
-                                origin = {
-                                    x: viewBox.x + (viewBox.width - newWidth) / 2,
-                                    y: viewBox.y + (viewBox.height - newHeight) / 2
-                                };
-                            } else {
-                                origin = {
-                                    x: focalPoint.x + (newWidth / viewBox.width) * (viewBox.x - focalPoint.x),
-                                    y: focalPoint.y + (newHeight / viewBox.height) * (viewBox.y - focalPoint.y),
-                                };
-                            }
-
-                            self.setViewBox(origin.x, origin.y, newWidth, newHeight, animationTime, () => {
-                                zoom.callback(this.initialViewBox.width / newWidth);
-                            });
-
-                            return self;
-                        });
-                    } else {
-                        delete self.zoomIn;
-                        delete self.zoomOut;
-                    }
-
-                    this.zoom = zoom || null;
+                    self._setupEvents(svg);
                 }
             };
 
@@ -443,7 +309,7 @@
             // Getter and Setter for ViewBox
             this.getViewBox = () => $.extend({}, viewBox);
 
-            // animate method
+            // Animate method
             const animate = getAnimator(state => setViewBox(svg, state));
             this.setViewBox = (x, y, width, height, animationTime, callback) => {
                 if (animationTime == null) {
@@ -473,94 +339,117 @@
                 return this;
             };
 
-            this.setViewBox(viewBox.x, viewBox.y, viewBox.width, viewBox.height, 0);
-
-
-            if (this.eventMagnet) {
-                this.eventMagnet.off("mousewheel DOMMouseScroll MozMousePixelScroll", self._mousewheelEventHandler);
-                this.eventMagnet.off("dblclick", self._dblclickEventHandler);
-            }
-
-            this.eventMagnet.bind("mousewheel DOMMouseScroll MozMousePixelScroll", self._mousewheelEventHandler.bind(self));
-            this.eventMagnet.bind("dblclick", self._dblclickEventHandler.bind(self));
-
-            touchEvents: {
-                var dragStarted = false;
-                var scaleStarted = false;
-                var preventClick = false;
-                var distance = 0;
-                opts.eventDom[0].addEventListener("click", function (ev) {
-                    if (preventClick) {
-                        preventClick = false;
-                        return ev.preventDefault();
+            // Pan methods
+            pan: {
+                function panMethod (callback, amount, animationTime) {
+                    if (!this.options.pan) {
+                        return this;
                     }
-                }, true);
-                opts.eventDom.bind("mousedown touchstart", (function (ev) {
-                    var domBody, initialViewBox, mouseMoveCallback, mouseUpCallback, oldCursor;
-                    if (dragStarted || scaleStarted) return;
-                    if (this.events.drag !== true || (ev.type === "mousedown" && ev.which !== this.events.dragMouseButton)) return;
-                    ev.preventDefault();
-                    if (ev.type === "touchstart" && isDoubleTouch(ev)) {
-                        scaleStarted = true;
-                        distance = touchDistance(ev);
-                    } else dragStarted = true;
-                    preventClick = false;
-                    initialViewBox = $.extend({}, viewBox);
-                    domBody = window.document.body;
-                    oldCursor = opts.eventDom.css("cursor");
-                    if (this.events.dragCursor != null) opts.eventDom.css("cursor", this.events.dragCursor);
-                    mouseMoveCallback = (function (ev2) {
-                        var isTouch = /touch/i.test(ev.type);
-                        var checkDoubleTouch = isTouch && isDoubleTouch(ev2);
-                        if (scaleStarted && !checkDoubleTouch) return;
-                        ev2.preventDefault();
-                        if (!scaleStarted && checkDoubleTouch) {
-                            scaleStarted = true;
-                            distance = touchDistance(ev2);
-                            dragStarted = false;
+
+                    if (amount == null) {
+                        amount = this.options.pan.factor
+                        if (!amount) {
+                            return this;
                         }
-                        if (Math.sqrt(Math.pow(ev.pageX + ev2.pageX, 2) + Math.pow(ev.pageY + ev2.pageY, 2)) > 3) preventClick = true;
-                        if (dragStarted) {
-                            (function (thisref) {
-                                var initialMousePosition = getViewBoxCoordinatesFromEvent(thisref.svg, ev);
-                                var currentMousePosition = getViewBoxCoordinatesFromEvent(thisref.svg, ev2);
-                                thisref.setViewBox(initialViewBox.x + initialMousePosition.x - currentMousePosition.x, initialViewBox.y + initialMousePosition.y - currentMousePosition.y, null, null, 0);
-                            })(this);
-                        } else if (scaleStarted) {
-                            (function (thisref) {
-                                var newDistance = touchDistance(ev2);
-                                if (newDistance == distance) {
-                                    return;
-                                }
-                                var mouse = touchCenter(thisref.svg, ev2);
-                                this.zoomOut(mouse, (distance - newDistance) / distance);
-                                distance = newDistance;
-                            })(this);
-                        }
-                    }).bind(opts);
-                    mouseUpCallback = (function (ev2) {
-                        if (ev2.type === "mouseout" && ev2.target !== ev2.currentTarget) return;
-                        if (ev2.type === "mouseup" && ev2.which !== this.events.dragMouseButton) return;
-                        ev2.preventDefault();
-                        domBody.removeEventListener("mousemove", mouseMoveCallback, true);
-                        domBody.removeEventListener("touchmove", mouseMoveCallback, true);
-                        domBody.removeEventListener("mouseup", mouseUpCallback, true);
-                        domBody.removeEventListener("touchend", mouseUpCallback, true);
-                        domBody.removeEventListener("touchcancel", mouseUpCallback, true);
-                        domBody.removeEventListener("mouseout", mouseUpCallback, true);
-                        if (this.events.dragCursor != null) opts.eventDom.css("cursor", oldCursor);
-                        dragStarted = false;
-                        scaleStarted = false;
-                        distance = 0;
-                    }).bind(opts);
-                    domBody.addEventListener("mousemove", mouseMoveCallback, true);
-                    domBody.addEventListener("touchmove", mouseMoveCallback, true);
-                    domBody.addEventListener("mouseup", mouseUpCallback, true);
-                    domBody.addEventListener("touchend", mouseUpCallback, true);
-                    domBody.addEventListener("touchcancel", mouseUpCallback, true);
-                    domBody.addEventListener("mouseout", mouseUpCallback, true);
-                }).bind(opts));
+                    }
+
+                    return callback(amount, animationTime);
+                }
+
+                this.panLeft = panMethod.bind(this, (amount, animationTime) => (
+                    this.panRight(-amount, animationTime)
+                ));
+
+                this.panRight = panMethod.bind(this, (amount, animationTime) => (
+                    this.setViewBox(viewBox.x + amount, null, null, null, animationTime, () => {
+                        this.options.pan.callback({ x: viewBox.x, y: viewBox.y });
+                    })
+                ));
+
+                this.panUp = panMethod.bind(this, (amount, animationTime) => (
+                    this.panDown(-amount, animationTime)
+                ));
+
+                this.panDown = panMethod.bind(this, (amount, animationTime) => (
+                    this.setViewBox(null, viewBox.y + amount, null, null, animationTime, () => {
+                        this.options.pan.callback({ x: viewBox.x, y: viewBox.y });
+                    })
+                ));
             }
+
+            // Zoom methods
+            zoom: {
+                function zoomMethod (callback, focalPoint, amount, animationTime) {
+                    if (!this.options.zoom) {
+                        return this;
+                    }
+
+                    if (amount == null) {
+                        amount = this.options.zoom.factor
+                        if (!amount) {
+                            return this;
+                        }
+                    }
+
+                    return callback(focalPoint, amount, animationTime);
+                };
+
+                this.zoomIn = zoomMethod.bind(this, (focalPoint, amount, animationTime) => (
+                    this.zoomOut(focalPoint, -amount, animationTime)
+                ));
+
+                this.zoomOut = zoomMethod.bind(this, (focalPoint, amount, animationTime) => {
+                    let newHeight, newWidth;
+                    if (amount < 0) {
+                        newWidth = viewBox.width / (1 - amount);
+                        newHeight = viewBox.height / (1 - amount);
+                    } else {
+                        newWidth = viewBox.width * (1 + amount);
+                        newHeight = viewBox.height * (1 + amount);
+                    }
+
+                    //Validate zoom limits
+                    const minWidthAfterZoom = this.options.initialViewBox.width / this.options.zoom.maxZoom;
+                    const maxWidthAfterZoom = this.options.initialViewBox.width / this.options.zoom.minZoom;
+                    if (newWidth < minWidthAfterZoom) {
+                        newHeight *= minWidthAfterZoom / newWidth;
+                        newWidth = minWidthAfterZoom;
+                    } else if (newWidth > maxWidthAfterZoom) {
+                        newHeight *= maxWidthAfterZoom / newWidth;
+                        newWidth = maxWidthAfterZoom;
+                    }
+
+                    const minHeightAfterZoom = this.options.initialViewBox.height / this.options.zoom.maxZoom;
+                    const maxHeightAfterZoom = this.options.initialViewBox.height / this.options.zoom.minZoom;
+                    if (newHeight < minHeightAfterZoom) {
+                        newWidth *= minHeightAfterZoom / newHeight;
+                        newHeight = minHeightAfterZoom;
+                    } else if (newHeight > maxHeightAfterZoom) {
+                        newWidth *= maxHeightAfterZoom / newHeight;
+                        newHeight = maxHeightAfterZoom;
+                    }
+
+                    // Calculate origin based on the focal point constant
+                    let origin;
+                    if (focalPoint == null) {
+                        origin = {
+                            x: viewBox.x + (viewBox.width - newWidth) / 2,
+                            y: viewBox.y + (viewBox.height - newHeight) / 2
+                        };
+                    } else {
+                        origin = {
+                            x: focalPoint.x + (newWidth / viewBox.width) * (viewBox.x - focalPoint.x),
+                            y: focalPoint.y + (newHeight / viewBox.height) * (viewBox.y - focalPoint.y),
+                        };
+                    }
+
+                    return this.setViewBox(origin.x, origin.y, newWidth, newHeight, animationTime, () => {
+                        this.options.zoom.callback(this.initialViewBox.width / newWidth);
+                    });
+                });
+            }
+
+            this.setViewBox(viewBox.x, viewBox.y, viewBox.width, viewBox.height, 0);
         }
 
         validateLimits(viewBox) {
@@ -601,35 +490,155 @@
             return this.setViewBox(x - viewBox.width / 2, y - viewBox.height / 2, viewBox.width, viewBox.height, animationTime);
         }
 
-        _mousewheelEventHandler(event) {
-            const delta = parseInt(event.originalEvent.wheelDelta || -event.originalEvent.detail);
-
-            if (!delta || !this.options.zoom || !this.options.zoom.events.mouseWheel) {
+        destroy() {
+            if (!this.options.eventMagnet || !this.options.eventMagnet.length) {
                 return;
             }
 
-            const mouse = getViewBoxCoordinatesFromEvent(this.svg, event);
-
-            if (delta > 0) {
-                this.zoomIn(mouse);
-            } else {
-                this.zoomOut(mouse);
-            }
-
-            return false;
+            this.options.eventMagnet.off("mousewheel DOMMouseScroll MozMousePixelScroll", this._handlers.mousewheel.bind(this));
+            this.options.eventMagnet.off("dblclick", this._handlers.dblclick.bind(this));
+            this.options.eventMagnet[0].removeEventListener("click", this._handlers.click.bind(this), true);
+            this.options.eventMagnet.off("mousedown touchstart", this._handlers.pinchAndDrag.bind(this));
         }
 
-        _dblclickEventHandler(event) {
-            if (!this.zoom || !this.options.zoom.events.events.doubleClick) {
-                return;
+        _setupEvents(svg) {
+            this._handlers = {
+                mousewheel: function (event) {
+                    const delta = parseInt(event.originalEvent.wheelDelta || -event.originalEvent.detail);
+
+                    if (!delta || !this.options.zoom || !this.options.zoom.events.mouseWheel) {
+                        return;
+                    }
+
+                    const mouse = getViewBoxCoordinatesFromEvent(svg, event);
+                    if (delta > 0) {
+                        this.zoomIn(mouse);
+                    } else {
+                        this.zoomOut(mouse);
+                    }
+                    return false;
+                },
+                dblclick: function (event) {
+                    if (!this.options.zoom || !this.options.zoom.events.doubleClick) {
+                        return;
+                    }
+
+                    this.zoomIn(getViewBoxCoordinatesFromEvent(svg, event));
+                    return false;
+                }
+            };
+
+
+            touchEvents: {
+                let dragStarted = false;
+                let scaleStarted = false;
+                let preventClick = false;
+                let pinchDistance = 0;
+
+                this._handlers.click = function (event) {
+                    if (preventClick) {
+                        preventClick = false;
+                        return event.preventDefault();
+                    }
+                };
+
+                this._handlers.pinchAndDrag = function (event) {
+                    if (!this.options.pan.events.drag || (event.type === "mousedown" && event.which !== this.options.pan.events.dragMouseButton) || dragStarted || scaleStarted) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    preventClick = false;
+
+                    const domBody = window.document.body;
+                    const initialViewBox = $.extend({}, viewBox);
+                    const initialMousePosition = getViewBoxCoordinatesFromEvent(svg, event);
+
+                    const oldCursor = this.options.eventMagnet.css("cursor");
+                    if (this.events.dragCursor != null) {
+                        this.options.eventMagnet.css("cursor", this.events.dragCursor);
+                    }
+
+                    if (event.type === "touchstart" && isDoubleTouch(event)) {
+                        scaleStarted = true;
+                        pinchDistance = touchDistance(event);
+                    } else {
+                        dragStarted = true;
+                    }
+
+                    const mouseMoveCallback = function (event2) {
+                        const isTouch = /touch/i.test(event.type);
+                        const checkDoubleTouch = isTouch && isDoubleTouch(event2);
+
+                        if (scaleStarted && !checkDoubleTouch) {
+                            return;
+                        }
+
+                        event2.preventDefault();
+
+                        if (!scaleStarted && checkDoubleTouch) {
+                            scaleStarted = true;
+                            dragStarted = false;
+                            pinchDistance = touchDistance(event2);
+                        }
+
+                        if (Math.sqrt(Math.pow(event.pageX + event2.pageX, 2) + Math.pow(event.pageY + event2.pageY, 2)) > 3) {
+                            preventClick = true;
+                        }
+
+                        if (dragStarted) {
+                            const currentMousePosition = getViewBoxCoordinatesFromEvent(svg, event2);
+                            this.setViewBox(initialViewBox.x + initialMousePosition.x - currentMousePosition.x, initialViewBox.y + initialMousePosition.y - currentMousePosition.y, null, null, 0);
+                        } else if (scaleStarted) {
+                            const newPinchDistance = touchDistance(event2);
+                            if (newPinchDistance === pinchDistance) {
+                                return;
+                            }
+
+                            const mouse = touchCenter(svg, event2);
+                            this.zoomOut(mouse, (pinchDistance - newPinchDistance) / pinchDistance, 0);
+                            pinchDistance = newPinchDistance;
+                        }
+                    };
+
+                    const mouseUpCallback = function (event2) {
+                        if (
+                            (event2.type === "mouseout" && event2.target !== event2.currentTarget) ||
+                            (event2.type === "mouseup" && event2.which !== this.options.pan.events.dragMouseButton)
+                        ) {
+                            return;
+                        }
+
+                        event2.preventDefault();
+                        domBody.removeEventListener("mousemove", mouseMoveCallback, true);
+                        domBody.removeEventListener("touchmove", mouseMoveCallback, true);
+                        domBody.removeEventListener("mouseup", mouseUpCallback, true);
+                        domBody.removeEventListener("touchend", mouseUpCallback, true);
+                        domBody.removeEventListener("touchcancel", mouseUpCallback, true);
+                        domBody.removeEventListener("mouseout", mouseUpCallback, true);
+
+                        if (this.events.dragCursor != null) {
+                            this.options.eventMagnet.css("cursor", oldCursor);
+                        }
+
+                        dragStarted = false;
+                        scaleStarted = false;
+                        pinchDistance = 0;
+                    };
+
+                    domBody.addEventListener("mousemove", mouseMoveCallback, true);
+                    domBody.addEventListener("touchmove", mouseMoveCallback, true);
+                    domBody.addEventListener("mouseup", mouseUpCallback, true);
+                    domBody.addEventListener("touchend", mouseUpCallback, true);
+                    domBody.addEventListener("touchcancel", mouseUpCallback, true);
+                    domBody.addEventListener("mouseout", mouseUpCallback, true);
+                }
             }
 
-            this.zoomIn(getViewBoxCoordinatesFromEvent(this.svg, event));
-            return false;
-        }
-
-        _touchEventHandler(evnt) {
-
+            this.options.eventMagnet.on("mousewheel DOMMouseScroll MozMousePixelScroll", this._handlers.mousewheel.bind(this));
+            this.options.eventMagnet.on("dblclick", this._handlers.dblclick.bind(this));
+            this.options.eventMagnet[0].addEventListener("click", this._handlers.click.bind(this), true);
+            this.options.eventMagnet.on("mousedown touchstart", this._handlers.pinchAndDrag.bind(this));
         }
     }
 
