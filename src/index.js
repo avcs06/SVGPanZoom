@@ -5,15 +5,36 @@
   Repository: https://github.com/avcs06/SVGPanZoom/
 */
 
-(function (root, factory) {
-    if (typeof define === 'function' && define['amd']) {
-        define(['jquery'], factory);
-    } else if (typeof exports === 'object' && typeof module === 'object') {
-        module.exports = factory(root, require('jquery'));
+(function (factory) {
+    "use strict";
+    if (typeof define === 'function' && define.amd) {
+        // AMD
+        define(['jquery'], function ($) {
+            return factory($, window, document);
+        });
+    } else if (typeof exports === 'object') {
+        // CommonJS
+        module.exports = function (root, $) {
+            if (!root) {
+                // CommonJS environments without a window global must pass a
+                // root. This will give an error otherwise
+                root = window;
+            }
+
+            if (!$) {
+                $ = typeof window !== 'undefined' ? // jQuery's factory checks for a global window
+                    require('jquery') :
+                    require('jquery')(root);
+            }
+
+            return factory($, root, root.document);
+        };
     } else {
-        root.SVGPanZoom = factory(root, root.jQuery);
+        // Browser
+        window.SVGPanZoom = factory(jQuery, window, document);
     }
-}(this, function (window, $) {
+}(function ($, window, document, undefined) {
+
     if (!$) {
         throw new Error("Dependencies not met - jQuery is not defined");
     };
@@ -267,10 +288,8 @@
                 throw new Error('Invalid Parameters. Firt parameter to SVGPanZoom should be an svg element');
             }
 
-            svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-
-            const self = this;
             this.svg = svg;
+            svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
             let viewBox = $.extend({}, svg.viewBox.baseVal);
             if (viewBox.x === 0 && viewBox.y === 0 && viewBox.width === 0 && viewBox.height === 0) {
@@ -278,39 +297,88 @@
             }
 
             // Option validations
-            this.options = {
-                set initialViewBox(initialViewBox) {
-                    // Set initial viewbox
-                    if (initialViewBox != null) {
-                        if (typeof initialViewBox === "string") {
-                            viewBox = parseViewBoxString(initialViewBox);
-                        } else if (typeof initialViewBox === "object") {
-                            viewBox = $.extend({}, defaultViewBox, initialViewBox);
-                        } else {
-                            throw new Error('initialViewBox is of invalid type');
+            options: {
+                let _options;
+                Object.defineProperty(this, 'options', {
+                    get: function () {
+                        return _options;
+                    },
+                    set: function (options) {
+                        if (_options) {
+                            throw new Error('Options cannot be overriden');
+                        }
+                        _options = options;
+                    }
+                });
+            }
+
+            setOptions: {
+                const self = this;
+                let _initialViewBox, _animationTime, _eventMagnet, _limits;
+
+                this.options = {
+                    get initialViewBox() {
+                        return _initialViewBox;
+                    },
+                    set initialViewBox(initialViewBox) {
+                        // Set initial viewbox
+                        if (initialViewBox != null) {
+                            if (typeof initialViewBox === "string") {
+                                viewBox = parseViewBoxString(initialViewBox);
+                            } else if (typeof initialViewBox === "object") {
+                                viewBox = $.extend({}, defaultViewBox, initialViewBox);
+                            } else {
+                                throw new Error('initialViewBox is of invalid type');
+                            }
+                        }
+
+                        _initialViewBox = $.extend({}, viewBox);
+                    },
+                    get animationTime() {
+                        return _animationTime;
+                    },
+                    set animationTime(animationTime) {
+                        _animationTime = animationTime || 0;
+                    },
+                    get eventMagnet() {
+                        return _eventMagnet;
+                    },
+                    set eventMagnet(eventMagnet) {
+                        self.destroy();
+                        _eventMagnet = $(eventMagnet || svg);
+                        self._setupEvents(svg);
+                    },
+                    get limits() {
+                        return _limits;
+                    },
+                    set limits(limits) {
+                        _limits = {};
+                        const directionalLimits = ((limits ? limits : (limits === 0 ? 0 : 15)) + '').trim().split(' ');
+
+                        horizontal: {
+                            const multiplier = Number((directionalLimits[1] || directionalLimits[0]).replace(/%/g, '')) / 100;
+                            const horizontalSizeIncrement = viewBox.height * multiplier;
+                            _limits.minX = viewBox.x - horizontalSizeIncrement;
+                            _limits.maxX = viewBox.x + viewBox.width + horizontalSizeIncrement;
+                        }
+
+                        vertical: {
+                            const multiplier = Number(directionalLimits[0].replace(/%/g, '')) / 100;
+                            const verticalSizeIncrement = viewBox.width * multiplier;
+                            _limits.minY = viewBox.y - verticalSizeIncrement;
+                            _limits.maxY = viewBox.y + viewBox.height + verticalSizeIncrement;
                         }
                     }
-
-                    this.initialViewBox = $.extend({}, viewBox);
-                },
-                set animationTime(animationTime) {
-                    this.animationTime = animationTime || 0;
-                },
-                set eventMagnet(eventMagnet) {
-                    self.destroy();
-                    this.eventMagnet = $(eventMagnet || svg);
-                    self._setupEvents(svg);
-                }
-            };
-
-            // Fill in default options
-            this.options = $.extend(true, {}, defaultOptions, options);
-
-            // Getter and Setter for ViewBox
-            this.getViewBox = () => $.extend({}, viewBox);
+                };
+            }
 
             // Animate method
             const animate = getAnimator(state => setViewBox(svg, state));
+
+            // Getter for ViewBox
+            this.getViewBox = () => $.extend({}, viewBox);
+
+            // Setter for ViewBox
             this.setViewBox = (x, y, width, height, animationTime, callback) => {
                 if (animationTime == null) {
                     animationTime = this.options.animationTime;
@@ -326,11 +394,12 @@
                 };
 
                 this.validateLimits(viewBox);
+
                 if (animationTime > 0) {
                     animate(oldBox, viewBox, animationTime, callback);
                 } else {
                     setViewBox(svg, viewBox);
-                    if(callback && typeof callback === 'function') {
+                    if (callback && typeof callback === 'function') {
                         callback();
                     }
                 }
@@ -341,7 +410,7 @@
 
             // Pan methods
             pan: {
-                function panMethod (callback, amount, animationTime) {
+                function panMethod(callback, amount, animationTime) {
                     if (!this.options.pan) {
                         return this;
                     }
@@ -372,14 +441,14 @@
 
                 this.panDown = panMethod.bind(this, (amount, animationTime) => (
                     this.setViewBox(null, viewBox.y + amount, null, null, animationTime, () => {
-                        this.options.pan.callback({ x: viewBox.x, y: viewBox.y });
+                        this.options.pan.callback(this.getViewBox());
                     })
                 ));
             }
 
             // Zoom methods
             zoom: {
-                function zoomMethod (callback, focalPoint, amount, animationTime) {
+                function zoomMethod(callback, focalPoint, amount, animationTime) {
                     if (!this.options.zoom) {
                         return this;
                     }
@@ -444,12 +513,18 @@
                     }
 
                     return this.setViewBox(origin.x, origin.y, newWidth, newHeight, animationTime, () => {
-                        this.options.zoom.callback(this.initialViewBox.width / newWidth);
+                        this.options.zoom.callback(this.options.initialViewBox.width / newWidth, this.getViewBox());
                     });
                 });
             }
 
-            this.setViewBox(viewBox.x, viewBox.y, viewBox.width, viewBox.height, 0);
+            this.destroy = Function.prototype;
+
+            // Fill in default options
+            $.extend(this.options, $.extend(true, {}, defaultOptions, options));
+
+            // Set initial viewbox
+            this.reset(0);
         }
 
         validateLimits(viewBox) {
@@ -470,12 +545,12 @@
             if (viewBox.y + viewBox.height > limits.maxY) viewBox.y = limits.maxY - viewBox.height;
         }
 
-        reset() {
-            return this.clone(this.initialViewBox);
+        reset(animationTime) {
+            return this.clone(this.options.initialViewBox, animationTime);
         }
 
-        clone(viewBox) {
-            return this.setViewBox(viewBox.x, viewBox.y, viewBox.width, viewBox.height);
+        clone(viewBox, animationTime) {
+            return this.setViewBox(viewBox.x, viewBox.y, viewBox.width, viewBox.height, animationTime);
         }
 
         getCenter() {
@@ -490,19 +565,8 @@
             return this.setViewBox(x - viewBox.width / 2, y - viewBox.height / 2, viewBox.width, viewBox.height, animationTime);
         }
 
-        destroy() {
-            if (!this.options.eventMagnet || !this.options.eventMagnet.length) {
-                return;
-            }
-
-            this.options.eventMagnet.off("mousewheel DOMMouseScroll MozMousePixelScroll", this._handlers.mousewheel.bind(this));
-            this.options.eventMagnet.off("dblclick", this._handlers.dblclick.bind(this));
-            this.options.eventMagnet[0].removeEventListener("click", this._handlers.click.bind(this), true);
-            this.options.eventMagnet.off("mousedown touchstart", this._handlers.pinchAndDrag.bind(this));
-        }
-
         _setupEvents(svg) {
-            this._handlers = {
+            const handlers = {
                 mousewheel: function (event) {
                     const delta = parseInt(event.originalEvent.wheelDelta || -event.originalEvent.detail);
 
@@ -512,9 +576,9 @@
 
                     const mouse = getViewBoxCoordinatesFromEvent(svg, event);
                     if (delta > 0) {
-                        this.zoomIn(mouse);
+                        this.zoomIn(mouse, null, 0);
                     } else {
-                        this.zoomOut(mouse);
+                        this.zoomOut(mouse, null, 0);
                     }
                     return false;
                 },
@@ -528,21 +592,20 @@
                 }
             };
 
-
             touchEvents: {
                 let dragStarted = false;
                 let scaleStarted = false;
                 let preventClick = false;
                 let pinchDistance = 0;
 
-                this._handlers.click = function (event) {
+                handlers.click = function (event) {
                     if (preventClick) {
                         preventClick = false;
                         return event.preventDefault();
                     }
                 };
 
-                this._handlers.pinchAndDrag = function (event) {
+                handlers.pinchAndDrag = function (event) {
                     if (!this.options.pan.events.drag || (event.type === "mousedown" && event.which !== this.options.pan.events.dragMouseButton) || dragStarted || scaleStarted) {
                         return;
                     }
@@ -551,12 +614,11 @@
                     preventClick = false;
 
                     const domBody = window.document.body;
-                    const initialViewBox = $.extend({}, viewBox);
-                    const initialMousePosition = getViewBoxCoordinatesFromEvent(svg, event);
+                    const initialViewBox = $.extend({}, this.getViewBox());
 
                     const oldCursor = this.options.eventMagnet.css("cursor");
-                    if (this.events.dragCursor != null) {
-                        this.options.eventMagnet.css("cursor", this.events.dragCursor);
+                    if (this.options.pan.events.dragCursor != null) {
+                        this.options.eventMagnet.css("cursor", this.options.pan.events.dragCursor);
                     }
 
                     if (event.type === "touchstart" && isDoubleTouch(event)) {
@@ -566,7 +628,7 @@
                         dragStarted = true;
                     }
 
-                    const mouseMoveCallback = function (event2) {
+                    const mouseMoveCallback = event2 => {
                         const isTouch = /touch/i.test(event.type);
                         const checkDoubleTouch = isTouch && isDoubleTouch(event2);
 
@@ -582,13 +644,14 @@
                             pinchDistance = touchDistance(event2);
                         }
 
-                        if (Math.sqrt(Math.pow(event.pageX + event2.pageX, 2) + Math.pow(event.pageY + event2.pageY, 2)) > 3) {
+                        if (Math.sqrt(Math.pow(event.pageX - event2.pageX, 2) + Math.pow(event.pageY - event2.pageY, 2)) > 2) {
                             preventClick = true;
                         }
 
                         if (dragStarted) {
+                            const initialMousePosition = getViewBoxCoordinatesFromEvent(svg, event);
                             const currentMousePosition = getViewBoxCoordinatesFromEvent(svg, event2);
-                            this.setViewBox(initialViewBox.x + initialMousePosition.x - currentMousePosition.x, initialViewBox.y + initialMousePosition.y - currentMousePosition.y, null, null, 0);
+                            this.setViewBox(initialViewBox.x + (initialMousePosition.x - currentMousePosition.x), initialViewBox.y + (initialMousePosition.y - currentMousePosition.y), null, null, 0);
                         } else if (scaleStarted) {
                             const newPinchDistance = touchDistance(event2);
                             if (newPinchDistance === pinchDistance) {
@@ -601,7 +664,7 @@
                         }
                     };
 
-                    const mouseUpCallback = function (event2) {
+                    const mouseUpCallback = event2 => {
                         if (
                             (event2.type === "mouseout" && event2.target !== event2.currentTarget) ||
                             (event2.type === "mouseup" && event2.which !== this.options.pan.events.dragMouseButton)
@@ -617,7 +680,7 @@
                         domBody.removeEventListener("touchcancel", mouseUpCallback, true);
                         domBody.removeEventListener("mouseout", mouseUpCallback, true);
 
-                        if (this.events.dragCursor != null) {
+                        if (this.options.pan.events.dragCursor != null) {
                             this.options.eventMagnet.css("cursor", oldCursor);
                         }
 
@@ -635,24 +698,55 @@
                 }
             }
 
-            this.options.eventMagnet.on("mousewheel DOMMouseScroll MozMousePixelScroll", this._handlers.mousewheel.bind(this));
-            this.options.eventMagnet.on("dblclick", this._handlers.dblclick.bind(this));
-            this.options.eventMagnet[0].addEventListener("click", this._handlers.click.bind(this), true);
-            this.options.eventMagnet.on("mousedown touchstart", this._handlers.pinchAndDrag.bind(this));
+            Object.keys(handlers).forEach(handler => {
+                handlers[handler] = handlers[handler].bind(this);
+            });
+
+            this.options.eventMagnet[0].addEventListener("click.SVGPanZoom", handlers.click, true);
+            this.options.eventMagnet.on("mousewheel.SVGPanZoom DOMMouseScroll.SVGPanZoom MozMousePixelScroll.SVGPanZoom", handlers.mousewheel);
+            this.options.eventMagnet.on("dblclick.SVGPanZoom", handlers.dblclick);
+            this.options.eventMagnet.on("mousedown.SVGPanZoom touchstart.SVGPanZoom", handlers.pinchAndDrag);
+
+            this.destroy = function () {
+                this.options.eventMagnet[0].addEventListener("click.SVGPanZoom", handlers.click, true);
+                this.options.eventMagnet.off("mousewheel.SVGPanZoom DOMMouseScroll.SVGPanZoom MozMousePixelScroll.SVGPanZoom");
+                this.options.eventMagnet.off("dblclick.SVGPanZoom");
+                this.options.eventMagnet.off("mousedown.SVGPanZoom touchstart.SVGPanZoom");
+            };
         }
     }
 
-    return $.fn.svgPanZoom = function (options) {
-        var ret = [];
+    $.fn.svgPanZoom = function (options) {
+        const instances = [];
         this.each(function () {
+            const element = $(this);
+            let instance = element.data('svgpanzoom');
+
+            if (!instance) {
+                instance = new SVGPanZoom(this, options);
+
+                const defaultDestroy = instance.destroy;
+                instance.destroy = (function () {
+                    defaultDestroy.bind(this)();
+                    element.removeData('svgpanzoom');
+                }).bind(instance);
+
+                element.data('svgpanzoom', instance);
+            }
+
+            instances.push(instance);
         });
-        if (ret.length === 0) {
+
+        if (instances.length === 0) {
             return null;
         }
-        if (ret.length === 1) {
-            return ret[0];
-        } else {
-            return ret;
+
+        if (instances.length === 1) {
+            return instances[0];
         }
+
+        return instances;
     };
+
+    return SVGPanZoom;
 }));

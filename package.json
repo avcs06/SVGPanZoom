@@ -4,8 +4,8 @@
   "description": "jQuery plugin to pan and zoom SVG images either programatically or through mouse/touch events",
   "main": "src/index.js",
   "scripts": {
-    "start": "nodemon --watch src --exec 'npm run build'",
-    "build": "babel src/index.js -o dist/index.js"
+    "start": "babel src/index.js --watch --out-file dist/SVGPanZoom.js",
+    "build": "babel src/index.js --out-file dist/SVGPanZoom.js"
   },
   "keywords": [
     "jquery",
@@ -19,9 +19,7 @@
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.0",
-    "babel-preset-env": "^1.6.1",
-    "nodemon": "^1.17.2"
+    "babel-preset-env": "^1.6.1"
   },
   "dependencies": {
     "jquery": "^3.3.1"
