@@ -871,26 +871,26 @@
             });
 
             document.getElementById('zoomin').addEventListener('click', function () {
-                instance.zoomIn(null, 2);
-            }, true);
+                instance.zoomIn(null, 0.4);
+            });
             document.getElementById('zoomout').addEventListener('click', function () {
-                instance.zoomOut(null, 2);
-            }, true);
+                instance.zoomOut(null, 0.4);
+            });
             document.getElementById('resetSVG').addEventListener('click', function () {
                 instance.reset();
-            }, true);
+            });
             document.getElementById('panleft').addEventListener('click', function() {
                 instance.panLeft(200);
-            }, true);
+            });
             document.getElementById('panright').addEventListener('click', function() {
                 instance.panRight(200);
-            }, true);
+            });
             document.getElementById('panup').addEventListener('click', function() {
                 instance.panUp(200);
-            }, true);
+            });
             document.getElementById('pandown').addEventListener('click', function() {
                 instance.panDown(200);
-            }, true);
+            });
         </script>
     </body>
 

@@ -2,6 +2,7 @@
 let requestAnimationFrame = window.requestAnimationFrame;
 let cancelAnimationFrame = window.cancelAnimationFrame;
 if (!requestAnimationFrame || !cancelAnimationFrame) {
+    let lastTime = 0;
     requestAnimationFrame = function(callback, element) {
         const currTime = new Date().getTime();
         const timeToCall = Math.max(0, 16 - (currTime - lastTime));

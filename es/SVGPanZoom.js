@@ -207,13 +207,13 @@ var SVGPanZoom = function () {
                 get initialViewBox() {
                     return _initialViewBox;
                 },
-                set initialViewBox(initialViewBox) {
+                set initialViewBox(value) {
                     // Set initial viewbox
-                    if (initialViewBox !== null) {
-                        if (typeof initialViewBox === "string") {
-                            viewBox = parseViewBoxString(initialViewBox);
-                        } else if ((typeof initialViewBox === 'undefined' ? 'undefined' : _typeof(initialViewBox)) === "object") {
-                            viewBox = extend({}, defaultViewBox, initialViewBox);
+                    if (value !== null) {
+                        if (typeof value === "string") {
+                            viewBox = parseViewBoxString(value);
+                        } else if ((typeof value === 'undefined' ? 'undefined' : _typeof(value)) === "object") {
+                            viewBox = extend({}, defaultViewBox, value);
                         } else {
                             throw new Error('initialViewBox is of invalid type');
                         }
@@ -224,23 +224,23 @@ var SVGPanZoom = function () {
                 get animationTime() {
                     return _animationTime;
                 },
-                set animationTime(animationTime) {
-                    _animationTime = animationTime || 0;
+                set animationTime(value) {
+                    _animationTime = value || 0;
                 },
                 get eventMagnet() {
                     return _eventMagnet;
                 },
-                set eventMagnet(eventMagnet) {
+                set eventMagnet(value) {
                     self.destroy();
-                    _eventMagnet = eventMagnet || svg;
+                    _eventMagnet = value || svg;
                     self._setupEvents();
                 },
                 get limits() {
                     return _limits;
                 },
-                set limits(limits) {
+                set limits(value) {
                     _limits = {};
-                    var directionalLimits = ((limits ? limits : limits === 0 ? 0 : 15) + '').trim().split(' ');
+                    var directionalLimits = ((value ? value : value === 0 ? 0 : 15) + '').trim().split(' ');
 
                     horizontal: {
                         var multiplier = Number((directionalLimits[1] || directionalLimits[0]).replace(/%/g, '')) / 100;
@@ -480,7 +480,9 @@ var SVGPanZoom = function () {
                     event.preventDefault();
                     event.stopPropagation();
 
-                    var delta = parseInt((event || event.originalEvent).wheelDelta);
+                    event = event || event.originalEvent;
+                    var detail = event.detail || event.deltaX || event.deltaY || event.deltaZ;
+                    var delta = parseInt(-detail || event.wheelDelta);
 
                     if (!delta || !this.options.zoom || !this.options.zoom.events.mouseWheel) {
                         return;
@@ -494,8 +496,6 @@ var SVGPanZoom = function () {
                     }
                 },
                 dblclick: function dblclick(event) {
-                    event.preventDefault();
-
                     if (!this.options.zoom || !this.options.zoom.events.doubleClick) {
                         return;
                     }
@@ -513,7 +513,7 @@ var SVGPanZoom = function () {
                 handlers.click = function (event) {
                     if (preventClick) {
                         preventClick = false;
-                        return event.preventDefault();
+                        event.preventDefault();
                     }
                 };
 
@@ -524,9 +524,7 @@ var SVGPanZoom = function () {
                         return;
                     }
 
-                    event.preventDefault();
                     preventClick = false;
-
                     var domBody = window.document.body;
                     var initialViewBox = extend({}, this.getViewBox());
 
@@ -558,7 +556,7 @@ var SVGPanZoom = function () {
                             pinchDistance = touchDistance(event2);
                         }
 
-                        if (Math.sqrt(Math.pow(event.pageX - event2.pageX, 2) + Math.pow(event.pageY - event2.pageY, 2)) > 2) {
+                        if (Math.sqrt(Math.pow(event.pageX - event2.pageX, 2) + Math.pow(event.pageY - event2.pageY, 2)) > 25) {
                             preventClick = true;
                         }
 
@@ -573,7 +571,11 @@ var SVGPanZoom = function () {
                             }
 
                             var mouse = touchCenter(svg, event2);
-                            _this2.zoomOut(mouse, (pinchDistance - newPinchDistance) / pinchDistance, 0);
+                            if (pinchDistance > newPinchDistance) {
+                                _this2.zoomOut(mouse, (pinchDistance - newPinchDistance) / newPinchDistance, 0);
+                            } else {
+                                _this2.zoomOut(mouse, (pinchDistance - newPinchDistance) / pinchDistance, 0);
+                            }
                             pinchDistance = newPinchDistance;
                         }
                     };
@@ -583,13 +585,12 @@ var SVGPanZoom = function () {
                             return;
                         }
 
-                        event2.preventDefault();
-                        domBody.removeEventListener("mousemove", mouseMoveCallback, true);
-                        domBody.removeEventListener("touchmove", mouseMoveCallback, true);
-                        domBody.removeEventListener("mouseup", mouseUpCallback, true);
-                        domBody.removeEventListener("touchend", mouseUpCallback, true);
-                        domBody.removeEventListener("touchcancel", mouseUpCallback, true);
-                        domBody.removeEventListener("mouseout", mouseUpCallback, true);
+                        domBody.removeEventListener("mousemove", mouseMoveCallback, { passive: false, capture: true });
+                        domBody.removeEventListener("touchmove", mouseMoveCallback, { passive: false, capture: true });
+                        domBody.removeEventListener("mouseup", mouseUpCallback, { passive: false, capture: true });
+                        domBody.removeEventListener("touchend", mouseUpCallback, { passive: false, capture: true });
+                        domBody.removeEventListener("touchcancel", mouseUpCallback, { passive: false, capture: true });
+                        domBody.removeEventListener("mouseout", mouseUpCallback, { passive: false, capture: true });
 
                         if (_this2.options.pan.events.dragCursor !== null) {
                             _this2.options.eventMagnet.style.cursor = oldCursor;
@@ -600,12 +601,12 @@ var SVGPanZoom = function () {
                         pinchDistance = 0;
                     };
 
-                    domBody.addEventListener("mousemove", mouseMoveCallback, true);
-                    domBody.addEventListener("touchmove", mouseMoveCallback, true);
-                    domBody.addEventListener("mouseup", mouseUpCallback, true);
-                    domBody.addEventListener("touchend", mouseUpCallback, true);
-                    domBody.addEventListener("touchcancel", mouseUpCallback, true);
-                    domBody.addEventListener("mouseout", mouseUpCallback, true);
+                    domBody.addEventListener("mousemove", mouseMoveCallback, { passive: false, capture: true });
+                    domBody.addEventListener("touchmove", mouseMoveCallback, { passive: false, capture: true });
+                    domBody.addEventListener("mouseup", mouseUpCallback, { passive: false, capture: true });
+                    domBody.addEventListener("touchend", mouseUpCallback, { passive: false, capture: true });
+                    domBody.addEventListener("touchcancel", mouseUpCallback, { passive: false, capture: true });
+                    domBody.addEventListener("mouseout", mouseUpCallback, { passive: false, capture: true });
                 };
             }
 
@@ -613,18 +614,24 @@ var SVGPanZoom = function () {
                 handlers[handler] = handlers[handler].bind(_this3);
             });
 
-            this.options.eventMagnet.addEventListener("click", handlers.click, true);
-            this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel, true);
-            this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick, true);
-            this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, true);
-            this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, true);
+            this.options.eventMagnet.addEventListener("DOMMouseScroll", handlers.mousewheel);
+            this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel);
+
+            this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick);
+            this.options.eventMagnet.addEventListener("click", handlers.click, { capture: true });
+
+            this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, { passive: false, capture: true });
+            this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, { passive: false, capture: true });
 
             this.destroy = function () {
-                this.options.eventMagnet.addEventListener("click", handlers.click, true);
-                this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel, true);
-                this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick, true);
-                this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, true);
-                this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, true);
+                this.options.eventMagnet.addEventListener("DOMMouseScroll", handlers.mousewheel);
+                this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel);
+
+                this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick);
+                this.options.eventMagnet.addEventListener("click", handlers.click, { capture: true });
+
+                this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, { passive: false, capture: true });
+                this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, { passive: false, capture: true });
             };
         }
     }]);

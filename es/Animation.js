@@ -4,6 +4,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 var requestAnimationFrame = window.requestAnimationFrame;
 var cancelAnimationFrame = window.cancelAnimationFrame;
 if (!requestAnimationFrame || !cancelAnimationFrame) {
+    var lastTime = 0;
     requestAnimationFrame = function requestAnimationFrame(callback, element) {
         var currTime = new Date().getTime();
         var timeToCall = Math.max(0, 16 - (currTime - lastTime));

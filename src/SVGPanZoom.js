@@ -194,13 +194,13 @@ class SVGPanZoom {
                 get initialViewBox() {
                     return _initialViewBox;
                 },
-                set initialViewBox(initialViewBox) {
+                set initialViewBox(value) {
                     // Set initial viewbox
-                    if (initialViewBox !== null) {
-                        if (typeof initialViewBox === "string") {
-                            viewBox = parseViewBoxString(initialViewBox);
-                        } else if (typeof initialViewBox === "object") {
-                            viewBox = extend({}, defaultViewBox, initialViewBox);
+                    if (value !== null) {
+                        if (typeof value === "string") {
+                            viewBox = parseViewBoxString(value);
+                        } else if (typeof value === "object") {
+                            viewBox = extend({}, defaultViewBox, value);
                         } else {
                             throw new Error('initialViewBox is of invalid type');
                         }
@@ -211,23 +211,23 @@ class SVGPanZoom {
                 get animationTime() {
                     return _animationTime;
                 },
-                set animationTime(animationTime) {
-                    _animationTime = animationTime || 0;
+                set animationTime(value) {
+                    _animationTime = value || 0;
                 },
                 get eventMagnet() {
                     return _eventMagnet;
                 },
-                set eventMagnet(eventMagnet) {
+                set eventMagnet(value) {
                     self.destroy();
-                    _eventMagnet = eventMagnet || svg;
+                    _eventMagnet = value || svg;
                     self._setupEvents();
                 },
                 get limits() {
                     return _limits;
                 },
-                set limits(limits) {
+                set limits(value) {
                     _limits = {};
-                    const directionalLimits = ((limits ? limits : (limits === 0 ? 0 : 15)) + '').trim().split(' ');
+                    const directionalLimits = ((value ? value : (value === 0 ? 0 : 15)) + '').trim().split(' ');
 
                     horizontal: {
                         const multiplier = Number((directionalLimits[1] || directionalLimits[0]).replace(/%/g, '')) / 100;
@@ -451,7 +451,9 @@ class SVGPanZoom {
                 event.preventDefault();
                 event.stopPropagation();
 
-                const delta = parseInt((event || event.originalEvent).wheelDelta);
+                event = event || event.originalEvent;
+                const detail = event.detail || event.deltaX || event.deltaY || event.deltaZ;
+                const delta = parseInt(-detail || event.wheelDelta);
 
                 if (!delta || !this.options.zoom || !this.options.zoom.events.mouseWheel) {
                     return;
@@ -465,8 +467,6 @@ class SVGPanZoom {
                 }
             },
             dblclick: function(event) {
-                event.preventDefault();
-
                 if (!this.options.zoom || !this.options.zoom.events.doubleClick) {
                     return;
                 }
@@ -484,7 +484,7 @@ class SVGPanZoom {
             handlers.click = function(event) {
                 if (preventClick) {
                     preventClick = false;
-                    return event.preventDefault();
+                    event.preventDefault();
                 }
             };
 
@@ -493,9 +493,7 @@ class SVGPanZoom {
                     return;
                 }
 
-                event.preventDefault();
                 preventClick = false;
-
                 const domBody = window.document.body;
                 const initialViewBox = extend({}, this.getViewBox());
 
@@ -527,7 +525,7 @@ class SVGPanZoom {
                         pinchDistance = touchDistance(event2);
                     }
 
-                    if (Math.sqrt(Math.pow(event.pageX - event2.pageX, 2) + Math.pow(event.pageY - event2.pageY, 2)) > 2) {
+                    if (Math.sqrt(Math.pow(event.pageX - event2.pageX, 2) + Math.pow(event.pageY - event2.pageY, 2)) > 25) {
                         preventClick = true;
                     }
 
@@ -542,7 +540,11 @@ class SVGPanZoom {
                         }
 
                         const mouse = touchCenter(svg, event2);
-                        this.zoomOut(mouse, (pinchDistance - newPinchDistance) / pinchDistance, 0);
+                        if (pinchDistance > newPinchDistance) {
+                            this.zoomOut(mouse, (pinchDistance - newPinchDistance) / newPinchDistance, 0);
+                        } else {
+                            this.zoomOut(mouse, (pinchDistance - newPinchDistance) / pinchDistance, 0);
+                        }
                         pinchDistance = newPinchDistance;
                     }
                 };
@@ -555,13 +557,12 @@ class SVGPanZoom {
                         return;
                     }
 
-                    event2.preventDefault();
-                    domBody.removeEventListener("mousemove", mouseMoveCallback, true);
-                    domBody.removeEventListener("touchmove", mouseMoveCallback, true);
-                    domBody.removeEventListener("mouseup", mouseUpCallback, true);
-                    domBody.removeEventListener("touchend", mouseUpCallback, true);
-                    domBody.removeEventListener("touchcancel", mouseUpCallback, true);
-                    domBody.removeEventListener("mouseout", mouseUpCallback, true);
+                    domBody.removeEventListener("mousemove", mouseMoveCallback, { passive: false, capture: true });
+                    domBody.removeEventListener("touchmove", mouseMoveCallback, { passive: false, capture: true });
+                    domBody.removeEventListener("mouseup", mouseUpCallback, { passive: false, capture: true });
+                    domBody.removeEventListener("touchend", mouseUpCallback, { passive: false, capture: true });
+                    domBody.removeEventListener("touchcancel", mouseUpCallback, { passive: false, capture: true });
+                    domBody.removeEventListener("mouseout", mouseUpCallback, { passive: false, capture: true });
 
                     if (this.options.pan.events.dragCursor !== null) {
                         this.options.eventMagnet.style.cursor = oldCursor;
@@ -572,12 +573,12 @@ class SVGPanZoom {
                     pinchDistance = 0;
                 };
 
-                domBody.addEventListener("mousemove", mouseMoveCallback, true);
-                domBody.addEventListener("touchmove", mouseMoveCallback, true);
-                domBody.addEventListener("mouseup", mouseUpCallback, true);
-                domBody.addEventListener("touchend", mouseUpCallback, true);
-                domBody.addEventListener("touchcancel", mouseUpCallback, true);
-                domBody.addEventListener("mouseout", mouseUpCallback, true);
+                domBody.addEventListener("mousemove", mouseMoveCallback, { passive: false, capture: true });
+                domBody.addEventListener("touchmove", mouseMoveCallback, { passive: false, capture: true });
+                domBody.addEventListener("mouseup", mouseUpCallback, { passive: false, capture: true });
+                domBody.addEventListener("touchend", mouseUpCallback, { passive: false, capture: true });
+                domBody.addEventListener("touchcancel", mouseUpCallback, { passive: false, capture: true });
+                domBody.addEventListener("mouseout", mouseUpCallback, { passive: false, capture: true });
             }
         }
 
@@ -585,18 +586,24 @@ class SVGPanZoom {
             handlers[handler] = handlers[handler].bind(this);
         });
 
-        this.options.eventMagnet.addEventListener("click", handlers.click, true);
-        this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel, true);
-        this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick, true);
-        this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, true);
-        this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, true);
+        this.options.eventMagnet.addEventListener("DOMMouseScroll", handlers.mousewheel);
+        this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel);
+
+        this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick);
+        this.options.eventMagnet.addEventListener("click", handlers.click, { capture: true });
+
+        this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, { passive: false, capture: true });
+        this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, { passive: false, capture: true });
 
         this.destroy = function() {
-            this.options.eventMagnet.addEventListener("click", handlers.click, true);
-            this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel, true);
-            this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick, true);
-            this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, true);
-            this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, true);
+            this.options.eventMagnet.addEventListener("DOMMouseScroll", handlers.mousewheel);
+            this.options.eventMagnet.addEventListener("wheel", handlers.mousewheel);
+
+            this.options.eventMagnet.addEventListener("dblclick", handlers.dblclick);
+            this.options.eventMagnet.addEventListener("click", handlers.click, { capture: true });
+
+            this.options.eventMagnet.addEventListener("mousedown", handlers.pinchAndDrag, { passive: false, capture: true });
+            this.options.eventMagnet.addEventListener("touchstart", handlers.pinchAndDrag, { passive: false, capture: true });
         };
     }
 }
