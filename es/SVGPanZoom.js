@@ -1,208 +1,11 @@
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(global.SVGPanZoom = factory());
-}(this, (function () { 'use strict';
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var toStr = Object.prototype.toString;
-var defineProperty = Object.defineProperty;
-var gOPD = Object.getOwnPropertyDescriptor;
-
-var isArray = function isArray(arr) {
-	if (typeof Array.isArray === 'function') {
-		return Array.isArray(arr);
-	}
-
-	return toStr.call(arr) === '[object Array]';
-};
-
-var isPlainObject = function isPlainObject(obj) {
-	if (!obj || toStr.call(obj) !== '[object Object]') {
-		return false;
-	}
-
-	var hasOwnConstructor = hasOwn.call(obj, 'constructor');
-	var hasIsPrototypeOf = obj.constructor && obj.constructor.prototype && hasOwn.call(obj.constructor.prototype, 'isPrototypeOf');
-	// Not own constructor property must be Object
-	if (obj.constructor && !hasOwnConstructor && !hasIsPrototypeOf) {
-		return false;
-	}
-
-	// Own properties are enumerated firstly, so to speed up,
-	// if last one is own, then all properties are own.
-	var key;
-	for (key in obj) { /**/ }
-
-	return typeof key === 'undefined' || hasOwn.call(obj, key);
-};
-
-// If name is '__proto__', and Object.defineProperty is available, define __proto__ as an own property on target
-var setProperty = function setProperty(target, options) {
-	if (defineProperty && options.name === '__proto__') {
-		defineProperty(target, options.name, {
-			enumerable: true,
-			configurable: true,
-			value: options.newValue,
-			writable: true
-		});
-	} else {
-		target[options.name] = options.newValue;
-	}
-};
-
-// Return undefined instead of __proto__ if '__proto__' is not an own property
-var getProperty = function getProperty(obj, name) {
-	if (name === '__proto__') {
-		if (!hasOwn.call(obj, name)) {
-			return void 0;
-		} else if (gOPD) {
-			// In early versions of node, obj['__proto__'] is buggy when obj has
-			// __proto__ as an own property. Object.getOwnPropertyDescriptor() works.
-			return gOPD(obj, name).value;
-		}
-	}
-
-	return obj[name];
-};
-
-var extend = function extend() {
-	var options, name, src, copy, copyIsArray, clone;
-	var target = arguments[0];
-	var i = 1;
-	var length = arguments.length;
-	var deep = false;
-
-	// Handle a deep copy situation
-	if (typeof target === 'boolean') {
-		deep = target;
-		target = arguments[1] || {};
-		// skip the boolean and the target
-		i = 2;
-	}
-	if (target == null || (typeof target !== 'object' && typeof target !== 'function')) {
-		target = {};
-	}
-
-	for (; i < length; ++i) {
-		options = arguments[i];
-		// Only deal with non-null/undefined values
-		if (options != null) {
-			// Extend the base object
-			for (name in options) {
-				src = getProperty(target, name);
-				copy = getProperty(options, name);
-
-				// Prevent never-ending loop
-				if (target !== copy) {
-					// Recurse if we're merging plain objects or arrays
-					if (deep && copy && (isPlainObject(copy) || (copyIsArray = isArray(copy)))) {
-						if (copyIsArray) {
-							copyIsArray = false;
-							clone = src && isArray(src) ? src : [];
-						} else {
-							clone = src && isPlainObject(src) ? src : {};
-						}
-
-						// Never move original objects, clone them
-						setProperty(target, { name: name, newValue: extend(deep, clone, copy) });
-
-					// Don't bring in undefined values
-					} else if (typeof copy !== 'undefined') {
-						setProperty(target, { name: name, newValue: copy });
-					}
-				}
-			}
-		}
-	}
-
-	// Return the modified object
-	return target;
-};
-
-function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-//Polyfill for AnimationFrame
-var requestAnimationFrame = window.requestAnimationFrame;
-var cancelAnimationFrame = window.cancelAnimationFrame;
-if (!requestAnimationFrame || !cancelAnimationFrame) {
-    requestAnimationFrame = function requestAnimationFrame(callback, element) {
-        var currTime = new Date().getTime();
-        var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-        var id = window.setTimeout(function () {
-            callback(currTime + timeToCall);
-        }, timeToCall);
-
-        lastTime = currTime + timeToCall;
-        return id;
-    };
-    cancelAnimationFrame = function cancelAnimationFrame(id) {
-        clearTimeout(id);
-    };
-}
-
-var Animation = function Animation(initialState, finalState, time, onChange, onComplete) {
-    var _this = this;
-
-    _classCallCheck$1(this, Animation);
-
-    var start = 0;
-    var now = 0;
-
-    this.getCurrentState = function () {
-        var currentState = {};
-        Object.keys(initialState).forEach(function (key) {
-            currentState[key] = initialState[key] + now / time * (finalState[key] - initialState[key]);
-        });
-        return currentState;
-    };
-
-    this.animate = function (timestamp) {
-        if (!start) {
-            start = timestamp;
-        }
-
-        now = timestamp - start;
-        if (now <= time) {
-            onChange(_this.getCurrentState());
-            _this.id = requestAnimationFrame(_this.animate);
-        } else {
-            onComplete();
-        }
-    };
-
-    this.id = requestAnimationFrame(this.animate.bind(this));
-};
-
-/**
- * Returns an animate method which executes given callback at intervals
- * animate method accepts (initialState, finalState, time)
- * callback has currentState as parameter
- * @param {Function} callback
- *   Executed at each step of animation
- */
-
-
-var getAnimator = (function (callback) {
-    var currentAnimation = void 0;
-    return function (initialState, finalState, time, onComplete) {
-        currentAnimation && cancelAnimationFrame(currentAnimation.id);
-        currentAnimation = new Animation(initialState, finalState, time, callback || Function.prototype, function () {
-            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-                args[_key] = arguments[_key];
-            }
-
-            currentAnimation = null;
-            (onComplete || Function.prototype).apply(null, args);
-        });
-    };
-});
-
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+import extend from 'extend';
+import getAnimator from './Animation';
 
 var defaultOptions = {
     initialViewBox: null,
@@ -469,7 +272,7 @@ var SVGPanZoom = function () {
         // Setter for ViewBox
         this.setViewBox = function (x, y, width, height, animationTime, callback) {
             if (typeof animationTime === 'function') {
-                callback = animationTime;
+                callback = animationTime;;
                 animationTime = null;
             }
 
@@ -556,7 +359,7 @@ var SVGPanZoom = function () {
                 return callback(focalPoint, amount, animationTime);
             };
 
-            
+            ;
 
             this.zoomIn = zoomMethod.bind(this, function (focalPoint, amount, animationTime) {
                 return _this.zoomOut(focalPoint, -amount, animationTime);
@@ -829,7 +632,4 @@ var SVGPanZoom = function () {
     return SVGPanZoom;
 }();
 
-return SVGPanZoom;
-
-})));
-//# sourceMappingURL=SVGPanZoom.js.map
+export default SVGPanZoom;

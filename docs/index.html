@@ -842,6 +842,12 @@
                             </svg>
                         </div>
                     </div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button id="panleft" class="button">Pan Left</button>
+                        <button id="panright" class="button">Pan Right</button>
+                        <button id="panup" class="button">Pan Up</button>
+                        <button id="pandown" class="button">Pan Down</button>
+                    </div>
                 </section>
                 <section id="action">
                     <div id="download"></div>
@@ -858,12 +864,33 @@
                 </div>
             </footer>
         </div>
-        <script src="../node_modules/jquery/dist/jquery.min.js"></script>
         <script src="../dist/SVGPanZoom.js"></script>
         <script type="text/javascript">
-            var instance = new SVGPanZoom($('#demoSVG')[0], {
-                eventMagnet: '#SVGContainer'
+            var instance = new SVGPanZoom(document.getElementById('demoSVG'), {
+                eventMagnet: document.getElementById('SVGContainer')
             });
+
+            document.getElementById('zoomin').addEventListener('click', function () {
+                instance.zoomIn(null, 2);
+            }, true);
+            document.getElementById('zoomout').addEventListener('click', function () {
+                instance.zoomOut(null, 2);
+            }, true);
+            document.getElementById('resetSVG').addEventListener('click', function () {
+                instance.reset();
+            }, true);
+            document.getElementById('panleft').addEventListener('click', function() {
+                instance.panLeft(200);
+            }, true);
+            document.getElementById('panright').addEventListener('click', function() {
+                instance.panRight(200);
+            }, true);
+            document.getElementById('panup').addEventListener('click', function() {
+                instance.panUp(200);
+            }, true);
+            document.getElementById('pandown').addEventListener('click', function() {
+                instance.panDown(200);
+            }, true);
         </script>
     </body>
 
