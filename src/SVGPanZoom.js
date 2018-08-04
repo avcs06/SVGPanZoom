@@ -8,8 +8,8 @@ const defaultOptions = {
     eventMagnet: null,
     zoom: {
         factor: 0.25,
-        minZoom: 1,
-        maxZoom: 3,
+        minZoom: 0.1,
+        maxZoom: 5,
         events: {
             mouseWheel: true,
             doubleClick: true,
@@ -233,14 +233,14 @@ class SVGPanZoom {
                         const multiplier = Number((directionalLimits[1] || directionalLimits[0]).replace(/%/g, '')) / 100;
                         const horizontalSizeIncrement = viewBox.height * multiplier;
                         _limits.minX = viewBox.x - horizontalSizeIncrement;
-                        _limits.maxX = viewBox.x + viewBox.width + horizontalSizeIncrement;
+                        _limits.maxX = viewBox.x + horizontalSizeIncrement;
                     }
 
                     vertical: {
                         const multiplier = Number(directionalLimits[0].replace(/%/g, '')) / 100;
                         const verticalSizeIncrement = viewBox.width * multiplier;
                         _limits.minY = viewBox.y - verticalSizeIncrement;
-                        _limits.maxY = viewBox.y + viewBox.height + verticalSizeIncrement;
+                        _limits.maxY = viewBox.y + verticalSizeIncrement;
                     }
                 }
             };
@@ -408,20 +408,19 @@ class SVGPanZoom {
 
     validateLimits(viewBox) {
         const limits = this.options.limits;
-        const limitsWidth = Math.abs(limits.maxX - limits.minX);
-        const limitsHeight = Math.abs(limits.maxY - limits.minY);
-        if (viewBox.width > limitsWidth) {
-            viewBox.height *= limitsWidth / viewBox.width;
-            viewBox.width = limitsWidth;
+        const initialViewBox = this.options.initialViewBox;
+
+        if (viewBox.width <= initialViewBox.width) {
+            viewBox.x = Math.min(Math.max(viewBox.x, limits.minX), limits.maxX + (initialViewBox.width - viewBox.width));
+        } else {
+            viewBox.x = Math.min(Math.max(viewBox.x, limits.minX + (initialViewBox.width - viewBox.width)), limits.maxX);
         }
-        if (viewBox.height > limitsHeight) {
-            viewBox.width *= limitsHeight / viewBox.height;
-            viewBox.height = limitsHeight;
+
+        if (viewBox.height <= initialViewBox.height) {
+            viewBox.y = Math.min(Math.max(viewBox.y, limits.minY), limits.maxY + (initialViewBox.height - viewBox.height));
+        } else {
+            viewBox.y = Math.min(Math.max(viewBox.y, limits.minY + (initialViewBox.height - viewBox.height)), limits.maxY);
         }
-        if (viewBox.x < limits.minX) viewBox.x = limits.minX;
-        if (viewBox.y < limits.minY) viewBox.y = limits.minY;
-        if (viewBox.x + viewBox.width > limits.maxX) viewBox.x = limits.maxX - viewBox.width;
-        if (viewBox.y + viewBox.height > limits.maxY) viewBox.y = limits.maxY - viewBox.height;
     }
 
     reset(animationTime, callback) {
