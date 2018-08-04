@@ -1,6 +1,9 @@
-SVG Pan & Zoom v1.0.0
+SVG Pan & Zoom v2.0.0
 ======================
-jQuery plugin to pan and zoom SVG images either programatically or through mouse/touch events
+A Javascript plugin to pan and zoom SVG images either programatically or through mouse/touch events
+
+# Live Demo
+Available at [https://avcs.pro/svgpanzoom](https://avcs.pro/svgpanzoom).
 
 # Project forked
 This project uses [jquery-svg-pan-zoom project](https://github.com/DanielHoffmann/jquery-svg-pan-zoom) as base and improves on it.
@@ -13,7 +16,6 @@ This project uses [jquery-svg-pan-zoom project](https://github.com/DanielHoffman
  - Zooming keeps the cursor over the same coordinates relative to the image (A.K.A. GoogleMaps-like zoom)
 
 # Dependencies
- - jQuery
  - SVG-enabled browser (does not work with SVG work-arounds that use Flash)
 
 # The viewBox
@@ -24,15 +26,12 @@ The viewBox is an attribute of SVG images that defines the area of the SVG that 
 
 # Usage
 ```javascript
-var SVGPanZoom= $("svg").SVGPanZoom(options)
+var SVGPanZoom= new SVGPanZoom(SVGElement, options)
 ```
-- If the selection has more than one element, the return value will be an array of SVGPanZoom instances for each element in the same order of the selection.
-- If only one element is selected then the return value is a single SVGPanZoom instance.
-- If no elements are selected the above call returns `null`
 
-The returned SVGPanZoom instance contains all options as properties, these can be overwritten at any time directly, for example to disable mouseWheel events simply:
+The returned SVGPanZoom instance contains all options inside options property, these can be overwritten at any time directly, for example to disable mouseWheel events simply:
 ```javascript
-SVGPanZoom.events.mouseWheel= false
+SVGPanZoom.options.zoom.events.mouseWheel= false
 ```
 
 The SVGPanZoom instance also has methods for manipulating the viewBox programmatically. For example:
@@ -54,31 +53,32 @@ Options: {
         width: Number (1000), // the width of the viewBox
         height: Number (1000) // the height of the viewBox
     } (null),
-    /* ViewBox Limits
-        * min X (left)
-        * min Y (top)
-        * max X (right)
-        * max Y (bottom)
-        ***/
-    limits: Object {
-        min: {
-            x: Number (0 - initialViewBox.width * (15/100)),
-            y: Number (0 - initialViewBox.height * (15/100))
-        },
-        max: {
-            x: Number (initialViewBox.width  + initialViewBox.width * (15/100)),
-            y: Number (initialViewBox.height  + initialViewBox.height * ( 15/100))
-        }
-    } (null),
+
     // Time(milliseconds) to use for animations. Set 0 to remove the animation
-    animationTime: Number (300),
+    animationTime: Number (200),
+
+    /* ViewBox Limits in percentage
+        * Number (15) (all directions)
+        * String "Number Number" (15 15) (horizontal vertical)
+        ***/
+    limits: String (15),
+
+    /* DOMElement(container) to which all the events are attached
+     * If null events will be attached to SVG element itself
+     * Useful when your own touch and mouse events are interfering with the events of plugin
+     ***/
+    eventMagnet: DOMElement (null),
+
     // Zoom Params, set false to disable zoom
     zoom: {
-        // Zoom Factor, viewBox values are multiplied or divided with this factor to zoom on each step
+        // Zoom Factor, viewBox values are multiplied or divided based on this factor to zoom on each step
+        // Formula: ZoomOut => newWidth = width / (1 + factor), ZoomIn => newWidth = width * (1 + factor)
         factor: Number (0.25),
-        // Zoom Limits, maxZoom:3 => zoom upto 3x
-        minZoom: Number (1),
-        maxZoom: Number (3),
+        // Zoom Limits
+        // minZoom:0.1 => zoom out up to 0.1x
+        minZoom: Number (0.1),
+        // maxZoom:5 => zoom in upto 5x
+        maxZoom: Number (5),
         // Event related flags
         events: {
             // enable mouse wheel zooming events
@@ -106,12 +106,7 @@ Options: {
         },
         // onPan callback, coordinates = {x: x, y: y}
         callback: Function (function(coordinates) {})
-    },
-    /* Element(container) to which all the events are attached
-     * If null events will be attached to SVG element itself
-     * Useful when your own touch and mouse events are interfering with the events of plugin
-     ***/
-    eventMagnet: DOMElement or Selector (null)
+    }
 }
 ```
 
@@ -127,6 +122,7 @@ Pans the SVG in the specified direction.
 
 `amount` [`Number`] optional
 PAN distance, defaults to options.panFactor.
+
 `animationTime` [`Number`] optional
 Animation duration, defaults to options.animationTime.
 
@@ -139,8 +135,10 @@ Zooms the SVG in or out.
 
 `focalPoint` [`Object {x: Number,y: Number}`] optional
 This point should be relative to SVG co-ordinate system, defaults to center of current viewBox. This point will remain at the same place after zooming.
+
 `amount` [`Number`] optional
 Zoom factor, defaults to options.zoomFactor.
+
 `animationTime` [`Number`] optional
 Animation duration, defaults to options.animationTime.
 
@@ -166,18 +164,22 @@ Returns the viewbox in this format:
 
 ### setViewBox
 ```javascript
-SVGPanZoom.setViewBox(x, y, width, height, animationTime)
+SVGPanZoom.setViewBox(x, y, width, height, animationTime, callback)
 ```
 Changes the viewBox to the specified coordinates. Will respect the `options.limits` adapting the viewBox if needed (moving or reducing it to fit into `options.limits`
 
 `x` [`Number`]
 the new x coodinate of the top-left corner
+
 `y` [`Number`]
 the new y coodinate of the top-left corner
+
 `width` [`Number`]
 the new width of the viewBox
+
 `height` [`Number`]
 the new height of the viewBox
+
 `animationTime` [`Number`] optional
 Animation duration, defaults to options.animationTime.
 
@@ -185,15 +187,17 @@ Animation duration, defaults to options.animationTime.
 ```javascript
 SVGPanZoom.setCenter(x, y, animationTime)
 ```
-Sets the center of the SVG. Parameters:
+Sets the center of the SVG.
+
 `x` [`Number`]
 the new x coodinate of the center
+
 `y` [`Number`]
 the new y coodinate of the center
+
 `animationTime` [`Number`] optional
 Animation duration, defaults to options.animationTime.
 
 # Notes:
- - Only works in SVGs inlined in the HTML. You can use `$.load()` to load the SVG image in the page using AJAX and call `$().SVGPanZoom()` in the callback
  - This plugin does not create any controls (like arrows to move the image) on top of the SVG. These controls are simple to create manually and they can programmatically call the methods to move the image.
  - Do not manipulate the SVG viewBox attribute manually, use `SVGPanZoom.setViewBox()` instead

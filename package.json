@@ -1,8 +1,9 @@
 {
   "name": "svgpanzoom",
-  "version": "1.0.0",
-  "description": "jQuery plugin to pan and zoom SVG images either programatically or through mouse/touch events",
-  "main": "src/SVGPanZoom.js",
+  "version": "2.0.0",
+  "description": "A Javascript plugin to pan and zoom SVG images either programatically or through mouse/touch events",
+  "main": "lib/SVGPanZoom.js",
+  "repository": "git@github.com:avcs06/SVGPanZoom.git",
   "scripts": {
     "clean": "rimraf lib dist es",
     "build": "npm run clean && npm run build:commonjs && npm run build:umd && npm run build:umd:docs && npm run build:umd:min && npm run build:es",
@@ -22,7 +23,8 @@
     "pan",
     "zoom",
     "touch",
-    "pinch"
+    "pinch",
+    "wheel"
   ],
   "author": "AvcS",
   "license": "MIT",
