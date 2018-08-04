@@ -123,14 +123,15 @@ var extend = function extend() {
 function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 //Polyfill for AnimationFrame
-var requestAnimationFrame = window.requestAnimationFrame;
-var cancelAnimationFrame = window.cancelAnimationFrame;
+var GLOBAL = typeof window !== 'undefined' ? window : global;
+var requestAnimationFrame = GLOBAL.requestAnimationFrame;
+var cancelAnimationFrame = GLOBAL.cancelAnimationFrame;
 if (!requestAnimationFrame || !cancelAnimationFrame) {
     var lastTime = 0;
     requestAnimationFrame = function requestAnimationFrame(callback, element) {
         var currTime = new Date().getTime();
         var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-        var id = window.setTimeout(function () {
+        var id = GLOBAL.setTimeout(function () {
             callback(currTime + timeToCall);
         }, timeToCall);
 

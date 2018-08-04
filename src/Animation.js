@@ -1,12 +1,13 @@
 //Polyfill for AnimationFrame
-let requestAnimationFrame = window.requestAnimationFrame;
-let cancelAnimationFrame = window.cancelAnimationFrame;
+const GLOBAL = typeof window !== 'undefined' ? window : global;
+let requestAnimationFrame = GLOBAL.requestAnimationFrame;
+let cancelAnimationFrame = GLOBAL.cancelAnimationFrame;
 if (!requestAnimationFrame || !cancelAnimationFrame) {
     let lastTime = 0;
     requestAnimationFrame = function(callback, element) {
         const currTime = new Date().getTime();
         const timeToCall = Math.max(0, 16 - (currTime - lastTime));
-        const id = window.setTimeout(function() {
+        const id = GLOBAL.setTimeout(function() {
             callback(currTime + timeToCall);
         }, timeToCall);
 
