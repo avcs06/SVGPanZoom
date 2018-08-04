@@ -4,7 +4,7 @@ A Javascript plugin to pan and zoom SVG images either programatically or through
 
 # Installation
 ```
-npm install @avcs06/svgpanzoom --save
+npm install @avcs/svgpanzoom --save
 ```
 
 # Live Demo
