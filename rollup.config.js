@@ -13,8 +13,7 @@ var config = {
         }),
         // due to https://github.com/rollup/rollup/wiki/Troubleshooting#name-is-not-exported-by-module
         commonjs({
-            include: 'node_modules/**',
-            namedExports: { './node_module/extend.js': ['default'] }
+            include: 'node_modules/**'
         }),
         babel({
             exclude: 'node_modules/**'
