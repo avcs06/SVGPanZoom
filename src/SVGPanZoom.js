@@ -440,6 +440,7 @@ class SVGPanZoom {
     }
 
     setCenter(x, y, animationTime, callback) {
+        const viewBox = this.getViewBox();
         return this.setViewBox(x - viewBox.width / 2, y - viewBox.height / 2, viewBox.width, viewBox.height, animationTime, callback);
     }
 
