@@ -3,8 +3,17 @@ SVG Pan & Zoom v2
 A Javascript plugin to pan and zoom SVG images either programatically or through mouse/touch events
 
 # Installation
+*As npm module*
 ```
 npm install @avcs/svgpanzoom --save
+```
+*As bower component*
+```
+bower install avcs-svgpanzoom --save
+```
+*As standalone JavaScript plugin*
+```
+<script type="text/javascript" src="@avcs/svgpanzoom/dist/SVGPanZoom.js"></script>
 ```
 
 # Live Demo
