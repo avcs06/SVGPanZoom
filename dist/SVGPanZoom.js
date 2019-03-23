@@ -665,6 +665,7 @@ var SVGPanZoom = function () {
     }, {
         key: 'setCenter',
         value: function setCenter(x, y, animationTime, callback) {
+            var viewBox = this.getViewBox();
             return this.setViewBox(x - viewBox.width / 2, y - viewBox.height / 2, viewBox.width, viewBox.height, animationTime, callback);
         }
     }, {

@@ -1,0 +1,8 @@
+docs
+dist
+bower.json
+rollup.config.js
+
+.babelrc
+.gitignore
+.nvmrc

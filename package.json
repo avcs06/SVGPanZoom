@@ -1,6 +1,6 @@
 {
   "name": "@avcs/svgpanzoom",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "A Javascript plugin to pan and zoom SVG images either programatically or through mouse/touch events",
   "main": "lib/SVGPanZoom.js",
   "repository": "git@github.com:avcs06/SVGPanZoom.git",

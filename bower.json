@@ -1,0 +1,30 @@
+{
+    "name": "avcs-svgpanzoom",
+    "description": "A Javascript plugin to pan and zoom SVG images either programatically or through mouse/touch events",
+    "main": [
+        "dist/SVGPanZoom.js"
+    ],
+    "authors": [
+        "AvcS"
+    ],
+    "license": "MIT",
+    "keywords": [
+        "jquery",
+        "svg",
+        "pan",
+        "zoom",
+        "touch",
+        "pinch",
+        "wheel"
+    ],
+    "homepage": "https://avcs.pro/svgpanzoom",
+    "ignore": [
+        "**/.*",
+        "es",
+        "lib",
+        "docs",
+        "node_modules",
+        "bower_components",
+        "rollup.config.js"
+    ]
+}
